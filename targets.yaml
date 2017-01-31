@@ -1,0 +1,17 @@
+-
+  name: VagrantHost01
+  address: 127.0.0.1
+  ssh_port: 2222
+  vnc_port: 6767
+  username: vagrant
+  password: vagrant
+  type: vagrant_test
+-
+  name: VagrantHost02
+  address: 127.0.0.1
+  ssh_port: 2222
+  vnc_port: 6868
+  username: vagrant
+  password: vagrant
+  cmd_list:
+      - ls -la

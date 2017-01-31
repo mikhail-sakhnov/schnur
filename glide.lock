@@ -1,0 +1,27 @@
+hash: 9718dbdae7f12e7934dca3ecf8e6a44fb0d1711b0720181b5f4fd49148ae9e8b
+updated: 2017-01-28T01:45:10.182444125+03:00
+imports:
+- name: github.com/ghodss/yaml
+  version: 04f313413ffd65ce25f2541bfd2b2ceec5c0908c
+- name: github.com/gorilla/context
+  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+- name: github.com/gorilla/mux
+  version: 392c28fe23e1c45ddba891b0320b3b5df220beea
+- name: github.com/gorilla/websocket
+  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
+- name: github.com/kr/pretty
+  version: cfb55aafdaf3ec08f0db22699ab822c50091b1c4
+- name: github.com/kr/text
+  version: 7cafcd837844e784b526369c9bce262804aebc60
+- name: github.com/soider/d
+  version: e130d579db23765eafb39c852b8297f3b06b991d
+- name: golang.org/x/crypto
+  version: 854ae91cdcbf914b499b1d7641d07859f3653481
+  subpackages:
+  - curve25519
+  - ed25519
+  - ed25519/internal/edwards25519
+  - ssh
+- name: gopkg.in/yaml.v2
+  version: 4c78c975fe7c825c6d1466c42be594d1d6f3aba6
+testImports: []
