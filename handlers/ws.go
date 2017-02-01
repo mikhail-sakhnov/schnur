@@ -1,11 +1,15 @@
 package handlers
 
 import (
-	"github.com/gorilla/websocket"
-	"net/http"
-	"net"
-	"github.com/soider/d"
+	"context"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
+	"github.com/soider/d"
+	"github.com/soider/schnur/proxy"
+	"github.com/soider/schnur/targets"
+	"github.com/soider/schnur/targets/manager"
+	"github.com/soider/schnur/vnc"
+	"net/http"
 )
 
 var upgrader = websocket.Upgrader{
@@ -16,82 +20,54 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func Proxy(w http.ResponseWriter, r *http.Request) {
-	d.D("New connection")
-	reqData := mux.Vars(r)
-	d.D(reqData)
-	h := http.Header{
-		"Sec-Websocket-Protocol":{"binary"},
-		"Sec-WebSocket-Version": {"13"},
-	}
-	wsConn, err := upgrader.Upgrade(w, r, h)
+type WsHandler struct {
+	tm  *manager.TargetsManager
+	vnc vnc.VncConnector
+}
 
+func NewWsHandler(tm *manager.TargetsManager, vnc vnc.VncConnector) *WsHandler {
+	return &WsHandler{
+		tm:  tm,
+		vnc: vnc,
+	}
+}
+
+// TODO: ping handler
+// TODO: stop vnc connector the right way via ctx
+func (ws *WsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	targetName := mux.Vars(req)["target"]
+	target, err := ws.tm.Target(targetName)
+	if err != nil {
+		http.Error(rw, err.Error(), 404)
+	}
+	h := http.Header{
+		"Sec-Websocket-Protocol": {"binary"},
+		"Sec-WebSocket-Version":  {"13"},
+	}
+	wsConn, err := upgrader.Upgrade(rw, req, h)
+
+	if err != nil {
+		http.Error(rw, "Can't upgrade ws", 500)
+		return
+	}
+	ws.handle(ctx, wsConn, target)
+}
+
+func (ws *WsHandler) handle(ctx context.Context, wsConn *websocket.Conn, target targets.Target) {
+
+	ctx, cancel := context.WithCancel(ctx)
+	_ = cancel
+	address := target.GetVncAddress()
+	d.D(address, target.VncPort, target.VncPassword)
+	vncConn, err := ws.vnc.Connect(ctx, address, target.VncPort)
 	if err != nil {
 		d.D(err)
+		wsConn.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
 		return
 	}
-	tcpAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:5900")
-	if err != nil {
-		errorMsg := "FAIL(net resolve tcp addr): " + err.Error()
-		d.D(errorMsg)
-		_ = wsConn.WriteMessage(websocket.CloseMessage, []byte(errorMsg))
-		return
-	}
-
-	tcpConn, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		errorMsg := "FAIL(net dial tcp): " + err.Error()
-		d.D(errorMsg)
-		_ = wsConn.WriteMessage(websocket.CloseMessage, []byte(errorMsg))
-		return
-	}
-
-	proxyserver := NewProxyServer(wsConn, tcpConn)
-	go proxyserver.doProxy()
-}
-
-type ProxyServer struct {
-	wsConn  *websocket.Conn
-	tcpConn *net.TCPConn
-}
-
-func NewProxyServer(wsConn *websocket.Conn, tcpConn *net.TCPConn) *ProxyServer {
-	proxyserver := ProxyServer{wsConn, tcpConn}
-	return &proxyserver
-}
-
-func (proxyserver *ProxyServer) doProxy() {
-	go proxyserver.wsToTcp()
-	proxyserver.tcpToWs()
-}
-
-func (proxyserver *ProxyServer) tcpToWs() {
-	buffer := make([]byte, 1024)
-	for {
-		n, err := proxyserver.tcpConn.Read(buffer)
-		if err != nil {
-			proxyserver.tcpConn.Close()
-			break
-		}
-		err = proxyserver.wsConn.WriteMessage(websocket.BinaryMessage, buffer[0:n])
-		if err != nil {
-			d.D(err.Error())
-		}
-	}
-}
-
-func (proxyserver *ProxyServer) wsToTcp() {
-	proxyserver.wsConn.Subprotocol()
-	for {
-		_, data, err := proxyserver.wsConn.ReadMessage()
-		if err != nil {
-			break
-		}
-
-		_, err = proxyserver.tcpConn.Write(data)
-		if err != nil {
-			d.D(err.Error())
-			break
-		}
-	}
+	//defer wsConn.WriteMessage(websocket.CloseMessage, []byte{})
+	//defer vncConn.Close()
+	proxy := proxy.NewProxyServer(wsConn, vncConn)
+	proxy.DoProxy(ctx)
 }

@@ -6,8 +6,7 @@ func (t Target) SshConfig() *ssh.ClientConfig {
 	cfg := &ssh.ClientConfig{
 		User: t.Username,
 		Auth: []ssh.AuthMethod{
-			ssh.Password(t.Password),
-
+			ssh.Password(t.SshPassword),
 		},
 	}
 	return cfg

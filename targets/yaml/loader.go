@@ -10,7 +10,6 @@ import (
 	"github.com/soider/d"
 )
 
-
 type YamlLoader struct {
 	Data    []byte
 	targets targets.TargetList

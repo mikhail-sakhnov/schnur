@@ -20,20 +20,22 @@ func newUnknownTypeError(t targetType) error {
 type TargetList []Target
 
 type Target struct {
-	Name       string       `json:"name"`
-	Address    string       `json:"address"`
-	SshPort    int          `json:"ssh_port"`
-	VncAddress string       `json:"vnc_address"`
-	VncPort    string       `json:"vnc_port"`
-	Username   string       `json:"username"`
-	Password   string       `json:"password"`
-	KeyPath    string       `json:"key_path"`
-	CmdList    CommandsList `json:"cmd_list"` // TODO: fix unparsing from yaml
-	Type       targetType   `json:"type"`
+	Name        string       `json:"name"`
+	Address     string       `json:"address"`
+	SshPort     int          `json:"ssh_port"`
+	VncAddress  string       `json:"vnc_address"`
+	VncPort     int          `json:"vnc_port"`
+	VncPassword string       `json:"vnc_password"`
+	Username    string       `json:"username"`
+	SshPassword string       `json:"ssh_password"`
+	KeyPath     string       `json:"key_path"`
+	CmdList     CommandsList `json:"cmd_list"` // TODO: fix unparsing from yaml
+	Type        targetType   `json:"type"`
 }
 
 func (t *Target) GetVncAddress() string {
 	if t.VncAddress == "" {
+		t.VncAddress = t.Address
 		return t.Address
 	}
 	return t.VncAddress

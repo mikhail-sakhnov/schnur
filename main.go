@@ -10,6 +10,7 @@ import (
 	"github.com/soider/d"
 	"github.com/soider/schnur/handlers"
 	"github.com/soider/schnur/targets/manager"
+	"github.com/soider/schnur/vnc"
 	"net/http"
 )
 
@@ -34,7 +35,7 @@ type Schnur struct {
 func (s *Schnur) Init() {
 	tm := manager.New(s.Loader)
 	s.mux = mux.NewRouter()
-	s.mux.HandleFunc("/ws/{target:.+}", handlers.Proxy)
+	s.mux.Handle("/ws/{target:.+}", handlers.NewWsHandler(tm, vnc.VncConnector{}))
 	s.mux.Handle("/api/preconnect/{target:.+}", handlers.NewPrepareHandler(tm))
 	s.mux.Handle("/api/list", handlers.NewListHandler(tm))
 	s.mux.PathPrefix("/").Handler(http.FileServer(http.Dir("./public/")))
