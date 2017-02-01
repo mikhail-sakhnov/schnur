@@ -1,0 +1,271 @@
+<html>
+<head>
+    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
+    <script src="https://cdn.jsdelivr.net/vue.resource/1.0.3/vue-resource.min.js"></script>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <script src="/core/util.js"></script>
+    <script src="/app/webutil.js"></script>
+    <script>
+        // Load supporting scripts
+        WebUtil.load_scripts({
+            'core': ["base64.js", "websock.js", "des.js", "input/keysymdef.js",
+                "input/xtscancodes.js", "input/util.js", "input/devices.js",
+                "display.js", "inflator.js", "rfb.js", "input/keysym.js"]});
+
+    </script>
+    <style>
+        #app {
+            padding-top: 10em;
+            padding-left: 1em;
+            padding-right: 1em;
+            padding-bottom: 3em;
+        }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+    <title>Schnur</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+
+<nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <a class="navbar-brand" href="#">Schnur</a>
+        </div>
+
+    </div>
+</nav>
+
+
+<div class="container">
+
+    <div id="app">
+        <router-view></router-view>
+    </div>
+
+</div><!-- /.container -->
+
+<script type="text/x-template" id="VNCConnectionTemplate">
+    <div>
+        <canvas v-vnc="{host: host, port: port, password: password, target: targetName}"></canvas>
+    </div>
+</script>
+
+<script type="text/x-template" id="indexTemplate">
+    <div>
+        <div class="loading" v-if="loading">
+            Loading...
+        </div>
+
+        <div v-if="error" class="error">
+            {{ error }}
+        </div>
+
+        <div v-if="targets" class="content">
+                    <TargetListElement v-for="child in targets" v-bind:item="child"/>
+        </div>
+    </div>
+</script>
+
+<script type="text/x-template" id="targetListElementTemplate">
+<div>
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">{{item.name}} / {{item.address}} </h3>
+        </div>
+        <div class="panel-body">
+            <div class="col-xs-6 col-sm-3 sidebar-offcanvas" id="sidebar">
+                <div class="list-group">
+                    <p><strong>SSH Port: </strong>{{item.ssh_port}}</p>
+                    <p><strong>VNC Address: </strong>{{item.vnc_address}}</p>
+                    <p><strong>VNC Port: </strong>{{item.vnc_port}}</p>
+                    <p><strong>VNC Password: </strong>*****</p>
+                </div>
+                <button type="button"
+                        class="btn btn-lg"
+                        v-bind:class="{ 'btn-success': !ssh , 'btn-warning': ssh}"
+                        v-on:click="sshConnect">SSH</button>
+                <button type="button"
+                        class="btn btn-lg"
+                        v-bind:class="{ 'btn-success': !vnc , 'btn-warning': vnc}"
+                        v-on:click="vncConnect">VNC</button>
+            </div>
+            <div class="col-xs-6 col-sm-3 sidebar-offcanvas" >
+                <VNCConnection v-bind:targetName="item.name" v-bind:host="item.address" v-bind:port="item.vnc_port" v-bind:password="item.vnc_password"  v-if="vnc"/>
+            </div>
+        </div>
+</div>
+</script>
+
+<script>
+    function getTargets(client, callback) {
+        client.get("/api/list").then(function(response) {
+            callback(null, response.data)
+    },
+        function(response)
+        {
+            callback(response.error, response);
+        })
+    };
+
+    function getTextMap(client, mapId, callback) {
+        client.get("/api/f/" + mapId).then(function(response) {
+            callback(null, response.data
+    )
+    },
+        function(response)
+        {
+            callback(response.error, response)
+        })
+    }
+
+
+    const IndexViewComponent = {
+        template: '#indexTemplate',
+        data: function () {
+            return {
+                loading: false,
+                targets: null,
+                error: null
+            }
+        },
+        created: function () {
+            this.fetchData()
+        },
+        watch: {
+            '$route': 'fetchData'
+        },
+        methods: {
+            fetchData: function () {
+                this.error = this.targets = null
+                this.loading = true
+
+                var that = this;
+                getTargets(this.$http,                 function(err, targets) {
+                    that.loading = false
+                    if (err) {
+                        that.error = err.toString();
+                    } else {
+                        that.targets = targets
+                    }
+                })
+            }
+        }
+    }
+
+
+//    try {
+//        rfb = new RFB({'target':       document.getElementById('noVNC_canvas'),
+//            'encrypt':      WebUtil.getConfigVar('encrypt',
+//                (window.location.protocol === "https:")),
+//            'repeaterID':   WebUtil.getConfigVar('repeaterID', ''),
+//            'true_color':   WebUtil.getConfigVar('true_color', true),
+//            'local_cursor': WebUtil.getConfigVar('cursor', true),
+//            'shared':       WebUtil.getConfigVar('shared', true),
+//            'view_only':    WebUtil.getConfigVar('view_only', false),
+//            'onNotification':  notification,
+//            'onUpdateState':  updateState,
+//            'onDisconnected': disconnected,
+//            'onXvpInit':    xvpInit,
+//            'onPasswordRequired':  passwordRequired,
+//            'onFBUComplete': FBUComplete,
+//            'onDesktopName': updateDesktopName});
+//    } catch (exc) {
+//        status('Unable to create RFB client -- ' + exc, 'error');
+//        return; // don't continue trying to connect
+//    }
+//
+//    function getParameterByName(name, url) {
+//        if (!url) {
+//            url = window.location.href;
+//        }
+//        name = name.replace(/[\[\]]/g, "\\$&");
+//        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+//            results = regex.exec(url);
+//        if (!results) return null;
+//        if (!results[2]) return '';
+//        return decodeURIComponent(results[2].replace(/\+/g, " "));
+//    }
+//
+//    // Host and port for ws connection, not raw vnc
+//    var target = getParameterByName('target');
+//    rfb.connect("127.0.0.1", "8080", password, "ws/" + target);
+
+    const VNCConnection = {
+        template: '#VNCConnectionTemplate',
+        props: ['host', 'port', 'password', 'targetName'],
+        created: function() {
+            console.log(this);
+        },
+        directives: {
+            vnc: function(el, d) {
+                console.log(el)
+                console.log(d)
+                console.log(this)
+                var rfb = new RFB({'target':       el,
+                    'encrypt':      false,
+                    'repeaterID':   '',
+                    'true_color':   false,
+                    'local_cursor': true,
+                    'shared':       true,
+                    'view_only':    false,
+//                    'onNotification':  notification,
+//                    'onUpdateState':  updateState,
+//                    'onDisconnected': disconnected,
+//                    'onXvpInit':    xvpInit,
+                    'onPasswordRequired':  function(rfb, msg) {alert(msg)},
+//                    'onFBUComplete': FBUComplete,
+//                    'onDesktopName': updateDesktopName
+                });
+                rfb.connect("127.0.0.1", "8080", "", "ws/" + d.value.target)
+        }
+    }
+    }
+    const TargetListElement = {
+        template: '#targetListElementTemplate',
+        props: ["item"],
+        data: function() {
+            return {
+                ssh: false,
+                vnc: false
+            }
+        },
+        methods: {
+            sshConnect: function() {
+                console.log("connecting to ssh")
+                this.ssh = !this.ssh
+            },
+            vncConnect: function() {
+                console.log("connecting to vnc")
+                this.vnc = !this.vnc
+            }
+        }
+    };
+
+    Vue.component('TargetListElement', TargetListElement);
+    Vue.component('VNCConnection', VNCConnection);
+    const routes = [
+        {path: '/', component: IndexViewComponent},
+    ]
+
+    const router = new VueRouter({
+        routes: routes
+    })
+
+    const app = new Vue({
+        router: router,
+    }).$mount('#app')
+
+
+</script>
+</body>
+
+</html>
