@@ -66,8 +66,6 @@ func (ws *WsHandler) handle(ctx context.Context, wsConn *websocket.Conn, target 
 		wsConn.WriteMessage(websocket.CloseMessage, []byte(err.Error()))
 		return
 	}
-	//defer wsConn.WriteMessage(websocket.CloseMessage, []byte{})
-	//defer vncConn.Close()
 	proxy := proxy.NewProxyServer(wsConn, vncConn)
 	proxy.DoProxy(ctx)
 }

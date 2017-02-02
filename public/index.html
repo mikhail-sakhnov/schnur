@@ -229,7 +229,7 @@
 //                    'onFBUComplete': FBUComplete,
 //                    'onDesktopName': updateDesktopName
                 });
-                rfb.connect(location.hostname, location.port, "", "ws/" + d.value.target)
+                rfb.connect(location.hostname, location.port, d.value.password, "ws/" + d.value.target)
         }
     }
     }

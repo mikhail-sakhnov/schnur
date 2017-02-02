@@ -30,8 +30,6 @@ func (ps *ProxyServer) closer(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			d.D("Closing proxy server")
-			close(ps.done)
 			ps.tcpConn.Close()
 			ps.wsConn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
@@ -45,7 +43,7 @@ func (proxyserver *ProxyServer) TcpToWs(ctx context.Context) {
 	buffer := make([]byte, 1024)
 	for {
 		select {
-		case <-proxyserver.done:
+		case <-ctx.Done():
 			d.D("Stop tcptows goroutine")
 			return
 		default:
@@ -69,7 +67,7 @@ func (proxyserver *ProxyServer) WsToTcp(ctx context.Context) {
 	proxyserver.wsConn.Subprotocol()
 	for {
 		select {
-		case <-proxyserver.done:
+		case <-ctx.Done():
 			d.D("Stop wstotcp goroutine")
 			return
 		default:
